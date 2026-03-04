@@ -6,7 +6,6 @@ import numpy as np
 import torch
 
 from stable_baselines3.common.monitor import Monitor
-
 from tidybot_nav_env_v12_stage0 import TidybotNavEnvV12Stage0
 from v12_stage0_config import ENV
 
@@ -15,8 +14,7 @@ from nets import BCPolicy
 
 def make_env(render_mode=None):
     env = TidybotNavEnvV12Stage0(ENV, render_mode=render_mode)
-    env = Monitor(env)
-    return env
+    return Monitor(env)
 
 
 def ensure_uint8(img: np.ndarray) -> np.ndarray:
@@ -30,7 +28,12 @@ def ensure_uint8(img: np.ndarray) -> np.ndarray:
 def obs_to_torch(obs, device):
     img = ensure_uint8(obs["image"])
     img_t = torch.from_numpy(img).permute(2, 0, 1).contiguous().float().unsqueeze(0) / 255.0
-    st_t  = torch.from_numpy(obs["state"].astype(np.float32)).unsqueeze(0)
+
+    s = obs["state"].astype(np.float32)
+    if s.shape[0] == 6:
+        s = np.concatenate([s, np.array([0.0], dtype=np.float32)], axis=0)
+    st_t = torch.from_numpy(s).unsqueeze(0)
+
     return img_t.to(device), st_t.to(device)
 
 

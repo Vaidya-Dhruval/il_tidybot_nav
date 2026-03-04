@@ -13,10 +13,7 @@ class SmallCNN(nn.Module):
             dummy = torch.zeros(1, in_ch, 128, 128)
             h = self.conv(dummy)
             flat = h.view(1, -1).shape[1]
-        self.fc = nn.Sequential(
-            nn.Linear(flat, out_dim),
-            nn.ReLU(),
-        )
+        self.fc = nn.Sequential(nn.Linear(flat, out_dim), nn.ReLU())
 
     def forward(self, x):
         h = self.conv(x)
@@ -30,6 +27,7 @@ class MLP(nn.Module):
             nn.Linear(in_dim, 128), nn.ReLU(),
             nn.Linear(128, out_dim), nn.ReLU(),
         )
+
     def forward(self, x):
         return self.net(x)
 
@@ -42,8 +40,7 @@ class BCPolicy(nn.Module):
         self.cnn = SmallCNN(3, img_feat)
         self.mlp = MLP(state_dim, state_feat)
         self.head = nn.Sequential(
-            nn.Linear(img_feat + state_feat, 256),
-            nn.ReLU(),
+            nn.Linear(img_feat + state_feat, 256), nn.ReLU(),
             nn.Linear(256, 3),
         )
 
@@ -51,5 +48,4 @@ class BCPolicy(nn.Module):
         fi = self.cnn(image)
         fs = self.mlp(state)
         z = torch.cat([fi, fs], dim=1)
-        a = self.head(z)
-        return torch.tanh(a)
+        return torch.tanh(self.head(z))

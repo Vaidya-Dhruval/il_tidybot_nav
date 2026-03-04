@@ -6,7 +6,10 @@ from torch.utils.data import Dataset
 class ShardedNpzDataset(Dataset):
     """
     Loads teacher_shard_*.npz produced by record_teacher_v12_stage0.py
-    Provides samples: {"image": CHW float [0,1], "state": float32, "action": float32}
+    Returns samples:
+      image: float32 CHW in [0,1]
+      state: float32 (7,)
+      action: float32 (3,)
     """
     def __init__(self, shard_glob: str, max_items: int | None = None):
         self.files = sorted(glob.glob(shard_glob))
@@ -36,9 +39,9 @@ class ShardedNpzDataset(Dataset):
             return self._cache[fi]
         data = np.load(self.files[fi])
         image = data["image"]  # uint8 (N,H,W,3)
-        state = data["state"].astype(np.float32)
+        state = data["state"].astype(np.float32)  # (N,7)
         action = data["action"].astype(np.float32)
-        self._cache = {fi: (image, state, action)}  # keep only one file cached
+        self._cache = {fi: (image, state, action)}
         return self._cache[fi]
 
     def __getitem__(self, idx: int):
