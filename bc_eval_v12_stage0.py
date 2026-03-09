@@ -17,24 +17,12 @@ def make_env(render_mode=None):
     return Monitor(env)
 
 
-def ensure_uint8(img: np.ndarray) -> np.ndarray:
-    if img.dtype == np.uint8:
-        return img
-    if np.issubdtype(img.dtype, np.floating):
-        return (np.clip(img, 0.0, 1.0) * 255.0).astype(np.uint8)
-    return img.astype(np.uint8)
-
-
 def obs_to_torch(obs, device):
-    img = ensure_uint8(obs["image"])
-    img_t = torch.from_numpy(img).permute(2, 0, 1).contiguous().float().unsqueeze(0) / 255.0
-
     s = obs["state"].astype(np.float32)
     if s.shape[0] == 6:
         s = np.concatenate([s, np.array([0.0], dtype=np.float32)], axis=0)
     st_t = torch.from_numpy(s).unsqueeze(0)
-
-    return img_t.to(device), st_t.to(device)
+    return st_t.to(device)
 
 
 def main():
@@ -64,9 +52,9 @@ def main():
         best = 1e9
 
         while not done:
-            img_t, st_t = obs_to_torch(obs, device)
+            st_t = obs_to_torch(obs, device)
             with torch.no_grad():
-                a = net(img_t, st_t).cpu().numpy()[0].astype(np.float32)
+                a = net(st_t).cpu().numpy()[0].astype(np.float32)
 
             obs, r, terminated, truncated, info = env.step(a)
             done = bool(terminated or truncated)
@@ -83,6 +71,7 @@ def main():
 
     print(f"[summary] success_rate={succ}/{args.episodes} = {succ/args.episodes:.3f}")
     env.close()
+
 
 if __name__ == "__main__":
     main()
