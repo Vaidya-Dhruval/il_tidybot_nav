@@ -19,8 +19,6 @@ def make_env(render_mode=None):
 
 def obs_to_torch(obs, device):
     s = obs["state"].astype(np.float32)
-    if s.shape[0] == 6:
-        s = np.concatenate([s, np.array([0.0], dtype=np.float32)], axis=0)
     st_t = torch.from_numpy(s).unsqueeze(0)
     return st_t.to(device)
 
@@ -36,9 +34,11 @@ def main():
     env = make_env(render_mode="human" if args.render else None)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    net = BCPolicy(state_dim=7).to(device)
 
     ckpt = torch.load(args.ckpt, map_location=device)
+    state_dim = int(ckpt["state_dim"])
+
+    net = BCPolicy(state_dim=state_dim).to(device)
     net.load_state_dict(ckpt["model"])
     net.eval()
 

@@ -4,23 +4,13 @@ import torch
 from torch.utils.data import Dataset
 
 class ShardedNpzDataset(Dataset):
-    """
-    Loads teacher_shard_*.npz produced by record_teacher_v12_stage0.py
-
-    Returns samples:
-      state:  float32 (7,)
-      action: float32 (3,)
-
-    Note:
-      We intentionally IGNORE image here to make BC lighter and faster.
-    """
     def __init__(self, shard_glob: str, max_items: int | None = None):
         self.files = sorted(glob.glob(shard_glob))
         if not self.files:
             raise FileNotFoundError(f"No shards matched: {shard_glob}")
 
-        self.index = []   # (file_idx, local_idx)
-        self._cache = {}  # file_idx -> (state, action)
+        self.index = []
+        self._cache = {}
 
         count = 0
         for fi, f in enumerate(self.files):
@@ -42,10 +32,8 @@ class ShardedNpzDataset(Dataset):
             return self._cache[fi]
 
         data = np.load(self.files[fi])
-        state = data["state"].astype(np.float32)    # (N,7)
-        action = data["action"].astype(np.float32)  # (N,3)
-
-        # keep only one shard cached to control memory
+        state = data["state"].astype(np.float32)
+        action = data["action"].astype(np.float32)
         self._cache = {fi: (state, action)}
         return self._cache[fi]
 
@@ -53,10 +41,7 @@ class ShardedNpzDataset(Dataset):
         fi, j = self.index[idx]
         state, action = self._load_file(fi)
 
-        s = torch.from_numpy(state[j]).float()
-        a = torch.from_numpy(action[j]).float()
-
         return {
-            "state": s,
-            "action": a,
+            "state": torch.from_numpy(state[j]).float(),
+            "action": torch.from_numpy(action[j]).float(),
         }
