@@ -6,9 +6,9 @@ import numpy as np
 import torch
 
 from stable_baselines3.common.monitor import Monitor
+
 from tidybot_nav_env_v12_stage0 import TidybotNavEnvV12Stage0
 from v12_stage0_config import ENV
-
 from nets import BCPolicy
 
 
@@ -32,7 +32,6 @@ def main():
     args = ap.parse_args()
 
     env = make_env(render_mode="human" if args.render else None)
-
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     ckpt = torch.load(args.ckpt, map_location=device)
@@ -66,6 +65,7 @@ def main():
         print(
             f"[EP {ep+1}/{args.episodes}] steps={steps} success={is_success} "
             f"d_anchor={float((info or {}).get('d_anchor', float('nan'))):.3f} best={best:.3f} "
+            f"yaw_err={float((info or {}).get('yaw_err', float('nan'))):.3f} "
             f"coll={int((info or {}).get('collided', 0))} hit='{(info or {}).get('collided_with','')}'"
         )
 
