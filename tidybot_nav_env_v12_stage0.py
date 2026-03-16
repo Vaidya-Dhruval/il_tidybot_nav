@@ -147,7 +147,6 @@ class TidybotNavEnvV12Stage0(gym.Env):
             adr += dim
         self.n_rf: int = len(self.rf_slices)
 
-        # [dx_b_pre, dy_b_pre, sin(yaw_err), cos(yaw_err), d_prepose, lidar..., hold]
         state_dim = 6 + self.n_rf
         self.observation_space = spaces.Dict(
             {
@@ -195,10 +194,20 @@ class TidybotNavEnvV12Stage0(gym.Env):
         yaw_t = float(self.p.prepose_yaw)
         return x_t, y_t, yaw_t
 
+    def _set_base_pose(self, x: float, y: float, yaw: float):
+        self.data.qpos[self.qadr_x] = float(x)
+        self.data.qpos[self.qadr_y] = float(y)
+        self.data.qpos[self.qadr_th] = float(wrap_to_pi(yaw))
+        self.data.qvel[self.dadr_x] = 0.0
+        self.data.qvel[self.dadr_y] = 0.0
+        self.data.qvel[self.dadr_th] = 0.0
+        mujoco.mj_forward(self.model, self.data)
+
     # ------------------------- API
 
     def reset(self, *, seed: Optional[int] = None, options=None):
         super().reset(seed=seed)
+        options = {} if options is None else dict(options)
 
         tries = 0
         while True:
@@ -212,7 +221,15 @@ class TidybotNavEnvV12Stage0(gym.Env):
             self._best_d_anchor = float("inf")
             self._a_smooth[:] = 0.0
 
-            self._randomize_spawn()
+            manual_spawn = options.get("manual_spawn", None)
+            if manual_spawn is not None:
+                self._set_base_pose(
+                    x=float(manual_spawn["x"]),
+                    y=float(manual_spawn["y"]),
+                    yaw=float(manual_spawn["yaw"]),
+                )
+            else:
+                self._randomize_spawn()
 
             bx, by, bth = self._get_base_xyth()
             self._base_target[:] = (bx, by, bth)
@@ -220,6 +237,9 @@ class TidybotNavEnvV12Stage0(gym.Env):
 
             for _ in range(int(self.p.settle_steps)):
                 mujoco.mj_step(self.model, self.data)
+
+            if manual_spawn is not None:
+                break
 
             collided, _ = self._detect_collision_with_name()
             if collided and (tries < int(self.p.spawn_max_tries)):
@@ -432,7 +452,25 @@ class TidybotNavEnvV12Stage0(gym.Env):
 
     def _get_info(self) -> Dict:
         bx, by, bth = self._get_base_xyth()
-        return {"step": int(self.step_count), "base_x": float(bx), "base_y": float(by), "base_th": float(bth)}
+        x_t, y_t, yaw_t = self._get_virtual_prepose_world()
+
+        dx_w = float(x_t - bx)
+        dy_w = float(y_t - by)
+        d_pre = float(math.hypot(dx_w, dy_w))
+        yaw_err = float(wrap_to_pi(yaw_t - bth))
+
+        return {
+            "step": int(self.step_count),
+            "base_x": float(bx),
+            "base_y": float(by),
+            "base_th": float(bth),
+            "prepose_x": float(x_t),
+            "prepose_y": float(y_t),
+            "prepose_yaw": float(yaw_t),
+            "d_anchor": float(d_pre),
+            "yaw_err": float(yaw_err),
+            "hold_counter": int(self.hold_counter),
+        }
 
     # ------------------------- utils
 
@@ -477,20 +515,14 @@ class TidybotNavEnvV12Stage0(gym.Env):
             y = ay + r * math.sin(ang)
             th = wrap_to_pi(float(self.np_random.uniform(-self.p.spawn_yaw_range, self.p.spawn_yaw_range)))
 
-            self.data.qpos[self.qadr_x] = x
-            self.data.qpos[self.qadr_y] = y
-            self.data.qpos[self.qadr_th] = th
-            mujoco.mj_forward(self.model, self.data)
+            self._set_base_pose(x, y, th)
             return
 
         x, y, th = self._get_base_xyth()
         x += float(self.np_random.uniform(-self.p.spawn_xy_range, self.p.spawn_xy_range))
         y += float(self.np_random.uniform(-self.p.spawn_xy_range, self.p.spawn_xy_range))
         th = wrap_to_pi(th + float(self.np_random.uniform(-self.p.spawn_yaw_range, self.p.spawn_yaw_range)))
-        self.data.qpos[self.qadr_x] = x
-        self.data.qpos[self.qadr_y] = y
-        self.data.qpos[self.qadr_th] = th
-        mujoco.mj_forward(self.model, self.data)
+        self._set_base_pose(x, y, th)
 
     def _detect_collision_with_name(self) -> Tuple[bool, str]:
         if int(self.data.ncon) <= 0:

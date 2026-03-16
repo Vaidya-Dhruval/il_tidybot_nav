@@ -1,8 +1,13 @@
 from pathlib import Path
 import math
 
-from tidybot_nav_env_v12_stage0 import V12Stage0Params
+from pathlib import Path
+import math
 
+try:
+    from tb_tidybot_nav_il.il.tidybot_nav_env_v12_stage0 import V12Stage0Params
+except ImportError:
+    from tidybot_nav_env_v12_stage0 import V12Stage0Params
 # Resolve XML relative to project root:
 # stanford_tidybot/tb_tidybot_nav_il/il/v12_stage0_config.py
 # -> parents[2] = stanford_tidybot
