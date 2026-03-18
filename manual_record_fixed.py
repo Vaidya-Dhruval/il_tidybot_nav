@@ -315,6 +315,7 @@ def main():
     total_kept = 0
     total_discarded = 0
     epbuf = EpisodeBuffer(save_images=bool(args.save_images))
+    prev_in_goal = False
 
     with RawKeyboard() as kb:
         while True:
@@ -346,6 +347,7 @@ def main():
                     epbuf.clear()
                     action[:] = 0.0
                     t_ep = 0
+                    prev_in_goal = False
                     obs, info = reset_fixed(env, args.start_x, args.start_y, args.start_yaw)
                     total_discarded += 1
                     continue
@@ -367,6 +369,27 @@ def main():
                 timestep=t_ep,
             )
 
+            d_anchor = float(info.get("d_anchor", np.nan))
+            yaw_err = float(info.get("yaw_err", np.nan))
+            hold_counter = int(info.get("hold_counter", 0))
+            pos_ok = int(d_anchor <= env.p.base_success_radius)
+            yaw_ok = int(abs(yaw_err) <= env.p.prepose_yaw_tolerance)
+            in_goal = int(pos_ok and yaw_ok)
+
+            if bool(in_goal) and not prev_in_goal:
+                print(
+                    f"\n[enter-goal] "
+                    f"d={d_anchor:.3f} yaw={yaw_err:+.3f} "
+                    f"HOLD={hold_counter}/{env.p.hold_steps}"
+                )
+            elif (not bool(in_goal)) and prev_in_goal:
+                print(
+                    f"\n[exit-goal]  "
+                    f"d={d_anchor:.3f} yaw={yaw_err:+.3f} "
+                    f"HOLD={hold_counter}/{env.p.hold_steps}"
+                )
+            prev_in_goal = bool(in_goal)
+
             obs = next_obs
             action = decay_action(action, float(args.decay))
             action = clamp(action)
@@ -376,9 +399,12 @@ def main():
                 print(
                     f"\r[ep={episode_id:04d} step={t_ep:04d}] "
                     f"a=({action[0]:+.2f},{action[1]:+.2f},{action[2]:+.2f}) "
-                    f"d={float(info.get('d_anchor', np.nan)):.3f} "
-                    f"yaw={float(info.get('yaw_err', np.nan)):+.3f} "
-                    f"hold={int(info.get('hold_counter', 0)):02d} "
+                    f"d={d_anchor:.3f} "
+                    f"yaw={yaw_err:+.3f} "
+                    f"POS_OK={pos_ok} "
+                    f"YAW_OK={yaw_ok} "
+                    f"IN_GOAL={in_goal} "
+                    f"HOLD={hold_counter:02d}/{env.p.hold_steps:02d} "
                     f"coll={int(info.get('collided', 0))}",
                     end="",
                     flush=True,
@@ -419,6 +445,7 @@ def main():
                 epbuf = EpisodeBuffer(save_images=bool(args.save_images))
                 action[:] = 0.0
                 t_ep = 0
+                prev_in_goal = False
                 obs, info = reset_fixed(env, args.start_x, args.start_y, args.start_yaw)
 
             time.sleep(args.sleep)
