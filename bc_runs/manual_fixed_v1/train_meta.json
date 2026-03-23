@@ -1,0 +1,14 @@
+{
+  "data_glob": "./data/manual_stage0_fixed/*.npz",
+  "total_samples": 48923,
+  "total_episodes": 44,
+  "train_episodes": 37,
+  "val_episodes": 7,
+  "train_samples": 41382,
+  "val_samples": 7541,
+  "state_dim": 54,
+  "epochs": 40,
+  "batch_size": 256,
+  "lr": 0.0003,
+  "seed": 0
+}

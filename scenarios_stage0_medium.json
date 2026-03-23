@@ -1,0 +1,19 @@
+{
+  "scenarios": [
+    { "name": "A0_base",       "x": 0.0,  "y": -2.0, "yaw": 1.57, "max_steps": 1500 },
+    { "name": "A1_yaw_low",    "x": 0.0,  "y": -2.0, "yaw": 1.30, "max_steps": 1500 },
+    { "name": "A2_yaw_high",   "x": 0.0,  "y": -2.0, "yaw": 1.90, "max_steps": 1500 },
+
+    { "name": "B0_left_mid",   "x": -0.8, "y": -2.3, "yaw": 1.57, "max_steps": 1500 },
+    { "name": "B1_right_mid",  "x": 0.8,  "y": -2.3, "yaw": 1.57, "max_steps": 1500 },
+    { "name": "B2_far_center", "x": 0.0,  "y": -3.0, "yaw": 1.57, "max_steps": 1600 },
+
+    { "name": "B3_left_yaw",   "x": -0.8, "y": -2.3, "yaw": 1.10, "max_steps": 1600 },
+    { "name": "B4_right_yaw",  "x": 0.8,  "y": -2.3, "yaw": 2.10, "max_steps": 1600 },
+
+    { "name": "C0_far_left",   "x": -1.2, "y": -3.2, "yaw": 1.20, "max_steps": 1800 },
+    { "name": "C1_far_right",  "x": 1.2,  "y": -3.2, "yaw": 1.95, "max_steps": 1800 },
+    { "name": "C2_bad_yaw_l",  "x": 0.0,  "y": -2.8, "yaw": 0.40, "max_steps": 1800 },
+    { "name": "C3_bad_yaw_r",  "x": 0.0,  "y": -2.8, "yaw": 2.70, "max_steps": 1800 }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "data_glob": "./data/manual_stage0_multi/*.npz",
+  "total_samples": 93100,
+  "total_episodes": 100,
+  "train_episodes": 85,
+  "val_episodes": 15,
+  "train_samples": 79346,
+  "val_samples": 13754,
+  "state_dim": 54,
+  "epochs": 80,
+  "batch_size": 256,
+  "lr": 0.0003,
+  "seed": 0
+}
