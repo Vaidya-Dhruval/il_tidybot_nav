@@ -107,7 +107,7 @@ class ArmReachEnvV2(gym.Env):
         self._arm_target = np.zeros(7, dtype=np.float64)
 
         # action is interpreted as JOINT DELTA COMMAND, not absolute target
-        self.max_arm_delta_per_step = 0.03  # rad per env step at action=1
+        self.max_arm_delta_per_step = 0.02
 
         # obs = ee->prehandle (3) + dist (1) + arm q (7) + arm qd (7)
         #     + base residual to safe prepose in body frame (2) + yaw err sin/cos (2)
@@ -241,7 +241,6 @@ class ArmReachEnvV2(gym.Env):
 
         self._randomize_base_near_safe_pose()
 
-        # initialize arm target to CURRENT joint positions so it holds pose
         self._arm_target[:] = np.array([self.data.qpos[i] for i in self.arm_qadr], dtype=np.float64)
 
         self.step_count = 0
@@ -262,17 +261,13 @@ class ArmReachEnvV2(gym.Env):
 
         dist_before = float(self._get_obs()[3])
 
-        # freeze base
         self._hold_base()
 
-        # integrate persistent arm target
         self._arm_target += self.max_arm_delta_per_step * action.astype(np.float64)
 
-        # optional: keep targets within joint ranges if ranges exist
         for i, jid in enumerate(self.arm_joint_ids):
             rng = self.model.jnt_range[jid]
             lo, hi = float(rng[0]), float(rng[1])
-            # If range is effectively zero/unspecified, skip clamp
             if hi > lo:
                 self._arm_target[i] = np.clip(self._arm_target[i], lo, hi)
 

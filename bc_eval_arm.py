@@ -25,6 +25,7 @@ def main():
     ap.add_argument("--render", action="store_true")
     ap.add_argument("--fixed_reset", action="store_true")
     ap.add_argument("--sleep", type=float, default=0.02)
+    ap.add_argument("--tau", type=float, default=0.15)
     args = ap.parse_args()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -61,13 +62,22 @@ def main():
         done = False
         steps = 0
         best = start_dist
+        a_smooth = np.zeros(action_dim, dtype=np.float32)
 
         while not done:
             st_t = obs_to_torch(obs, device)
             with torch.no_grad():
-                a = net(st_t).cpu().numpy()[0].astype(np.float32)
+                a_raw = net(st_t).cpu().numpy()[0].astype(np.float32)
 
-            obs, r, terminated, truncated, info = env.step(a)
+            a_smooth = (1.0 - args.tau) * a_smooth + args.tau * a_raw
+
+            dist_now = float(info.get("distance", obs[3]))
+            if dist_now < 0.12:
+                a_smooth *= 0.5
+            if dist_now < 0.10:
+                a_smooth *= 0.3
+
+            obs, r, terminated, truncated, info = env.step(a_smooth)
             done = bool(terminated or truncated)
             steps += 1
             best = min(best, float(info.get("best_distance", 1e9)))
