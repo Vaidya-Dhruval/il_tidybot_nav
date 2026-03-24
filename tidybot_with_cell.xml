@@ -597,7 +597,7 @@
     <!-- ROBOTIC CELL SLIDING DOOR -->
     <!-- Front face at world Y=1.34. Left half centre X=2.05. Slides right to open. -->
     <body name="cell_door" pos="3.12 1.33 1.15">
-      <joint name="cell_door_joint" type="slide" axis="-1 0 0" range="0 1.0" damping="0.5" armature="0.05"/>
+      <!-- <joint name="cell_door_joint" type="slide" axis="-1 0 0" range="0 1.0" damping="0.5" armature="0.05"/> -->
       <site name="cell_door_site" pos="0.35 -0.02 0" size="0.03" type="sphere" rgba="1 0 1 0.9"/>
       <geom name="cell_door_glass"  type="box"  size="0.55 0.015 0.38"  rgba="0.7 0.85 0.9 0.4" mass="8" contype="0" conaffinity="0"/>
       <geom name="cell_door_top"    type="box"  size="0.55 0.02  0.015" pos="0 0  0.395" rgba="0.25 0.27 0.3 1" contype="0" conaffinity="0"/>
@@ -733,7 +733,7 @@
 
     <!-- Cell door: 0=closed, -0.87=fully open -->
     <!-- Cell door: 0=closed, 0.60=fully open -->
-    <position name="cell_door_actuator" joint="cell_door_joint" kp="20000" kv="200" ctrlrange="0 1.0"/>
+    <!-- <position name="cell_door_actuator" joint="cell_door_joint" kp="20000" kv="200" ctrlrange="0 1.0"/> -->
   </actuator>
 
   <keyframe>

@@ -25,7 +25,7 @@ def main():
     ap.add_argument("--render", action="store_true")
     ap.add_argument("--fixed_reset", action="store_true")
     ap.add_argument("--sleep", type=float, default=0.02)
-    ap.add_argument("--tau", type=float, default=0.15)
+    ap.add_argument("--tau", type=float, default=0.22)
     args = ap.parse_args()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -69,13 +69,15 @@ def main():
             with torch.no_grad():
                 a_raw = net(st_t).cpu().numpy()[0].astype(np.float32)
 
+            # slightly stronger response than before
             a_smooth = (1.0 - args.tau) * a_smooth + args.tau * a_raw
 
+            # gentler near-target damping so final correction is not suppressed too much
             dist_now = float(info.get("distance", obs[3]))
             if dist_now < 0.12:
-                a_smooth *= 0.5
+                a_smooth *= 0.75
             if dist_now < 0.10:
-                a_smooth *= 0.3
+                a_smooth *= 0.55
 
             obs, r, terminated, truncated, info = env.step(a_smooth)
             done = bool(terminated or truncated)

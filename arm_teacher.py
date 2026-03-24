@@ -11,12 +11,12 @@ class ArmTeacherDLS:
         target_site_id: int,
         arm_dof_indices,
         get_target_fn=None,
-        kp_xyz: float = 10.0,
-        damping: float = 0.05,
-        max_cart_vel: float = 0.40,
-        max_joint_cmd: float = 1.5,
+        kp_xyz: float = 7.0,
+        damping: float = 0.06,
+        max_cart_vel: float = 0.22,
+        max_joint_cmd: float = 1.0,
         stop_radius: float = 0.06,
-        posture_gain: float = 0.25,
+        posture_gain: float = 0.10,
         q_nominal=None,
     ):
         self.model = model
@@ -67,7 +67,7 @@ class ArmTeacherDLS:
 
         dq_task = J_pinv @ v_des
 
-        q_now = self.data.qpos[self.arm_dof_indices].astype(np.float64)
+        q_now = np.array([self.data.qpos[i] for i in self.arm_dof_indices], dtype=np.float64)
         dq_posture = self.posture_gain * (self.q_nominal - q_now)
 
         N = np.eye(len(self.arm_dof_indices), dtype=np.float64) - J_pinv @ J
