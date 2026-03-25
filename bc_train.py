@@ -12,7 +12,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--data_glob", type=str, required=True)
     ap.add_argument("--out_dir", type=str, required=True)
-    ap.add_argument("--epochs", type=int, default=25)
+    ap.add_argument("--epochs", type=int, default=30)
     ap.add_argument("--batch_size", type=int, default=256)
     ap.add_argument("--lr", type=float, default=3e-4)
     ap.add_argument("--val_frac", type=float, default=0.1)
@@ -34,7 +34,13 @@ def main():
     print("[dataset] total samples:", len(ds))
     print("[dataset] shards:", len(ds.files))
 
+    if len(ds) == 0:
+        raise RuntimeError("Dataset is empty. Check --data_glob")
+
     sample = ds[0]
+    if "state" not in sample or "action" not in sample:
+        raise RuntimeError("Dataset sample must contain 'state' and 'action' keys")
+
     state_dim = int(sample["state"].shape[0])
     action_dim = int(sample["action"].shape[0])
 
@@ -42,9 +48,17 @@ def main():
     print("[action_dim]", action_dim)
 
     n_val = int(len(ds) * args.val_frac)
+    if len(ds) > 1:
+        n_val = max(1, n_val)
+    n_val = min(n_val, len(ds) - 1) if len(ds) > 1 else 0
     n_train = len(ds) - n_val
-    train_ds, val_ds = random_split(ds, [n_train, n_val])
-    print(f"[split] train_samples={len(train_ds)} val_samples={len(val_ds)}")
+
+    if n_val > 0:
+        train_ds, val_ds = random_split(ds, [n_train, n_val])
+    else:
+        train_ds, val_ds = ds, None
+
+    print(f"[split] train_samples={len(train_ds)} val_samples={0 if val_ds is None else len(val_ds)}")
 
     train_loader = DataLoader(
         train_ds,
@@ -53,19 +67,22 @@ def main():
         num_workers=args.num_workers,
         pin_memory=use_pin,
     )
-    val_loader = DataLoader(
-        val_ds,
-        batch_size=args.batch_size,
-        shuffle=False,
-        num_workers=args.num_workers,
-        pin_memory=use_pin,
-    )
+
+    val_loader = None
+    if val_ds is not None:
+        val_loader = DataLoader(
+            val_ds,
+            batch_size=args.batch_size,
+            shuffle=False,
+            num_workers=args.num_workers,
+            pin_memory=use_pin,
+        )
 
     net = BCPolicy(state_dim=state_dim, action_dim=action_dim).to(device)
     opt = torch.optim.Adam(net.parameters(), lr=args.lr)
     mse = torch.nn.MSELoss()
 
-    best_val = 1e9
+    best_val = float("inf")
     history = []
 
     for ep in range(1, args.epochs + 1):
@@ -94,22 +111,25 @@ def main():
 
         tr_loss /= max(n, 1)
 
-        net.eval()
-        va_loss = 0.0
-        n = 0
-        print(f"[epoch {ep}] validating...")
-        with torch.no_grad():
-            for bi, batch in enumerate(val_loader, start=1):
-                st = batch["state"].to(device, non_blocking=use_pin)
-                act = batch["action"].to(device, non_blocking=use_pin)
+        if val_loader is not None:
+            net.eval()
+            va_loss = 0.0
+            n = 0
+            print(f"[epoch {ep}] validating...")
+            with torch.no_grad():
+                for bi, batch in enumerate(val_loader, start=1):
+                    st = batch["state"].to(device, non_blocking=use_pin)
+                    act = batch["action"].to(device, non_blocking=use_pin)
 
-                pred = net(st)
-                loss = mse(pred, act)
+                    pred = net(st)
+                    loss = mse(pred, act)
 
-                va_loss += float(loss.item()) * st.size(0)
-                n += st.size(0)
+                    va_loss += float(loss.item()) * st.size(0)
+                    n += st.size(0)
 
-        va_loss /= max(n, 1)
+            va_loss /= max(n, 1)
+        else:
+            va_loss = tr_loss
 
         print(f"[epoch {ep}] train_mse={tr_loss:.6f} val_mse={va_loss:.6f}")
 
